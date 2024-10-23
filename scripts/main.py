@@ -37,8 +37,6 @@ if __name__ == "__main__":
     #_____________________________________________________________________________________________________________________
 
     tx_no_coinbase = df_transactions[df_transactions["isCoinbase"] == 0].drop(["isCoinbase", "block_id"], axis=1) 
-    n_inputs = df_inputs.groupby("tx_id").size().rename("n_inputs") 
-    n_outputs = df_outputs.groupby("tx_id").size().rename("n_outputs") 
 
     size_input = 40 
     size_output = 9 
@@ -50,11 +48,10 @@ if __name__ == "__main__":
     }
 
     df_outputs["script_size"] = df_outputs["scripttype"].map(script_sizes)
-    script_total_size = df_outputs.groupby("tx_id")["script_size"].sum().rename("script_total_size") 
 
-    tx_no_coinbase = tx_no_coinbase.merge(n_inputs, on="tx_id", how="left") 
-    tx_no_coinbase = tx_no_coinbase.merge(n_outputs, on="tx_id", how="left") 
-    tx_no_coinbase = tx_no_coinbase.merge(script_total_size, on="tx_id", how="left") 
+    tx_no_coinbase = tx_no_coinbase.merge(df_inputs.groupby("tx_id").size().rename("n_inputs") , on="tx_id", how="left") 
+    tx_no_coinbase = tx_no_coinbase.merge(df_outputs.groupby("tx_id").size().rename("n_outputs") , on="tx_id", how="left") 
+    tx_no_coinbase = tx_no_coinbase.merge(df_outputs.groupby("tx_id")["script_size"].sum().rename("script_total_size") , on="tx_id", how="left") 
 
     tx_no_coinbase["size"] = size_input * tx_no_coinbase["n_inputs"] + size_output * tx_no_coinbase["n_outputs"] + tx_no_coinbase["script_total_size"]
     tx_no_coinbase["timestamp"] = pd.to_datetime(tx_no_coinbase["timestamp"], unit="s")
@@ -66,7 +63,7 @@ if __name__ == "__main__":
     }).rename(columns={"size": "congestion", "fee": "fee_sum"})
     df_congestion_fee["congestion_fee"] = df_congestion_fee["fee_sum"] / df_congestion_fee["congestion"] 
 
-    plot_congestion_fee(df_congestion_fee)
+    #plot_congestion_fee(df_congestion_fee)
 
     # SCRIPT TYPES CHART
     #_____________________________________________________________________________________________________________________
@@ -76,7 +73,7 @@ if __name__ == "__main__":
     script_used["month"] = script_used["timestamp"].dt.to_period("M")
     script_counts = script_used.groupby(["month", "scripttype"]).size().unstack().fillna(0) 
 
-    plot_script_counts(script_counts)
+    #plot_script_counts(script_counts)
 
     # SCRAPING 
     #_____________________________________________________________________________________________________________________
@@ -96,63 +93,103 @@ if __name__ == "__main__":
     mining_pools_addresses = {}
     for pool in mining_pools:
         with open(f"{output_dir}/{pool}.csv", "r") as f:
-            mining_pools_addresses[pool] = f.read().splitlines()
+            addresses = f.read().splitlines() 
+            for address in addresses:
+                mining_pools_addresses[address] = pool
 
     # DEANONIMIZATION 
     #_____________________________________________________________________________________________________________________
-    
 
+    tx_coinbase = df_transactions[df_transactions["isCoinbase"] == 1].drop("isCoinbase", axis=1)
+    tx_coinbase = tx_coinbase.merge(df_outputs, on="tx_id")
+    tx_coinbase = tx_coinbase.merge(df_mapping, on="addressId")
+    tx_coinbase = tx_coinbase.drop(["script_size", "scripttype", "addressId"], axis=1) # Elimino colonne inutili !!!!!! FORSE NE SERVE ELIMINARE ALTRE 
+    tx_coinbase["mining_pool"] = tx_coinbase["hash"].map(mining_pools_addresses).fillna("Others")
 
+    # DEANONIMIZATION OF TOP 4 MINERS
+    #_____________________________________________________________________________________________________________________
 
+    #testing purposes
+    wallet_id = [
+        "[012fa1bdf6]",
+        "EclipseMC.com-old",
+        "[019a46b8d8]",
+        "[01a990df75]"
+    ]
+    # wallet_id = []
 
+    other_miners = tx_coinbase[tx_coinbase["mining_pool"] == "Others"]
+    other_miners_count = other_miners["hash"].value_counts().reset_index() # Conto quante volte compare ogni hash
+    other_miners_count.columns = ["hash", "transaction_count"] 
+    top_4_miners = other_miners_count[:4].copy() 
+    if len(wallet_id) != 4:
+        found_miners(top_4_miners, base_url, wallet_id)
+    top_4_miners["wallet_id"] = wallet_id
+    top_4_miners.set_index("hash", inplace=True)
 
-
-
-# Per quanto riguarda le Coinbase che presentano indirizzi non appartenenti a
-# nessuna delle 4 mining pool, provare a deanonimizzare tramite WalletExplorer i 4 miners che
-# hanno prodotto più transazioni Coinbase (riferiti come top 4 miners), e raggruppare tutti gli
-# altri in una categoria “Others”
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    #print(top_4_miners)
 
 
 # ● analizzare le Coinbase deanonimizzate e produrre le seguenti statistiche:
 #       ○ numero di blocchi minati da ciascuna delle 4 mining pool, sia globalmente, che
 #         mostrando l’andamento temporale dei blocchi minati, per intervalli temporali di due
 #         mesi (ed eventualmente quelli dei top 4 miners) ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #       ○ distribuzione delle reward totali ricevute da ogni mining pool, sia globalmente che
 #         mostrandone l'andamento temporale, sempre per intervalli di due mesi;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ● considerare infine la Coinbase di Eligius mostrata in Fig.4. Questa transazione può essere
 # reperita semplicemente digitando il suo hash nell’explorer. Come si può vedere in figura è

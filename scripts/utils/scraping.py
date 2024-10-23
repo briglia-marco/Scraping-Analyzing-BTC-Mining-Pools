@@ -1,10 +1,17 @@
 import random
+from selenium.webdriver.chrome.options import Options
 from fake_useragent import UserAgent
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 import requests
 import time
 import os
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 
 # Generate Proxies from sslproxies.org and store them in a list 
 ## proxies, ua : List containing the proxies, UserAgent object
@@ -106,10 +113,12 @@ def get_mining_pool_page_link(mining_pools, mining_pools_addresses, base_url, pr
 ## mining_pools, proxies, ua, base_url, output_dir : List with the mining pools, List containing the proxies, UserAgent object, URL of the page, Output directory
 def scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir):
     mining_pools_addresses = {pool: [] for pool in mining_pools}
+
     get_mining_pool_page_link(mining_pools, mining_pools_addresses, base_url, proxies, ua)
     get_address_page_link(mining_pools_addresses, base_url, proxies, ua)
     single_mining_pool_addresses = {pool: [] for pool in mining_pools} 
     extract_mining_pool_addresses(single_mining_pool_addresses, mining_pools_addresses, base_url, proxies, ua)
+
     os.makedirs(output_dir, exist_ok=True) 
     for pool_name, addresses in single_mining_pool_addresses.items():
         with open(f"{output_dir}/{pool_name}.csv", "w") as f:
@@ -125,3 +134,25 @@ def check_csv_files(output_dir, mining_pools):
         if os.path.getsize(f"{output_dir}/{pool}.csv") == 0:
             return False
     return True
+
+# Scrape WalletExplorer to get the addresses of the mining pools
+## top_4_miners, base_url, wallet_id : DataFrame with the top 4 miners, URL of the page, List with the wallet IDs
+def found_miners(top_4_miners, base_url, wallet_id):
+    options = Options()
+    options.add_argument('--headless=new')
+    driver = webdriver.Chrome(options=options)
+    wait = WebDriverWait(driver, 10)
+    for hash_value in top_4_miners["hash"]:
+        driver.get(base_url)
+        search_box = wait.until(EC.presence_of_element_located((By.NAME, "q")))  # Attende fino a quando l'elemento è presente
+        search_box.clear() 
+        search_box.send_keys(hash_value) 
+        search_box.send_keys(Keys.RETURN)
+        try:
+            wallet = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div h2"))).text.split(" ")[1]
+            wallet_id.append(wallet)
+        except Exception as e:
+            print(f"Errore nel recuperare il wallet ID per {hash_value}: {e}")
+    driver.quit()
+
+
