@@ -10,7 +10,8 @@ import random
 from fake_useragent import UserAgent
 from urllib.request import Request, urlopen
 from utils.data import *
-#from utils.scraping import *
+from utils.scraping import *
+from utils.graph import *
 
 if __name__ == "__main__":
 
@@ -32,6 +33,9 @@ if __name__ == "__main__":
     df_outputs = dataframes[2]
     df_transactions = dataframes[3]
 
+    # CONGESTION FEE CHART
+    #_____________________________________________________________________________________________________________________
+
     tx_no_coinbase = df_transactions[df_transactions["isCoinbase"] == 0].drop(["isCoinbase", "block_id"], axis=1) 
     n_inputs = df_inputs.groupby("tx_id").size().rename("n_inputs") 
     n_outputs = df_outputs.groupby("tx_id").size().rename("n_outputs") 
@@ -46,14 +50,13 @@ if __name__ == "__main__":
     }
 
     df_outputs["script_size"] = df_outputs["scripttype"].map(script_sizes)
-    script_total_size = df_outputs.groupby("tx_id")["script_size"].sum().rename("script_total_size") # series con indice tx_id e valore script_total_size
+    script_total_size = df_outputs.groupby("tx_id")["script_size"].sum().rename("script_total_size") 
 
-    # devo mergiare in transaction_no_coinbase n_inputs e n_outputs e la dimensione dello script per ogni output
-    tx_no_coinbase = tx_no_coinbase.merge(n_inputs, on="tx_id", how="left") # aggiungo n_inputs a tx_no_coinbase
-    tx_no_coinbase = tx_no_coinbase.merge(n_outputs, on="tx_id", how="left") # aggiungo n_outputs a tx_no_coinbase
-    tx_no_coinbase = tx_no_coinbase.merge(script_total_size, on="tx_id", how="left") # aggiungo script_total_size a tx_no_coinbase
+    tx_no_coinbase = tx_no_coinbase.merge(n_inputs, on="tx_id", how="left") 
+    tx_no_coinbase = tx_no_coinbase.merge(n_outputs, on="tx_id", how="left") 
+    tx_no_coinbase = tx_no_coinbase.merge(script_total_size, on="tx_id", how="left") 
 
-    tx_no_coinbase["size"] = size_input * tx_no_coinbase["n_inputs"] + size_output * tx_no_coinbase["n_outputs"] + tx_no_coinbase["script_total_size"] # calcolo size
+    tx_no_coinbase["size"] = size_input * tx_no_coinbase["n_inputs"] + size_output * tx_no_coinbase["n_outputs"] + tx_no_coinbase["script_total_size"]
     tx_no_coinbase["timestamp"] = pd.to_datetime(tx_no_coinbase["timestamp"], unit="s")
     tx_no_coinbase["month"] = tx_no_coinbase["timestamp"].dt.to_period("M") # "D" per giorno, "M" per mese
 
@@ -61,66 +64,43 @@ if __name__ == "__main__":
         "size": "sum",
         "fee": "sum"
     }).rename(columns={"size": "congestion", "fee": "fee_sum"})
-
     df_congestion_fee["congestion_fee"] = df_congestion_fee["fee_sum"] / df_congestion_fee["congestion"] 
-    #print(df_congestion_fee)
 
-    # Si può sostituire da qui con il codice della relazione per vedere giornalmente la congestione e il fee/congestion ratio
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-    index = np.arange(len(df_congestion_fee.index.astype(str)))
-    line1 = ax1.plot(index, df_congestion_fee["congestion"], label="Congestion", color='blue', linestyle='dashed')
-    ax1.set_title("Fee/Congestion ratio per month")
-    ax1.set_xlabel("Month")
+    plot_congestion_fee(df_congestion_fee)
 
-    # Primo asse y
-    ax1.set_ylabel("Congestion", color='blue')
-    ax1.tick_params(axis='y', labelcolor='blue')
-
-    ax2 = ax1.twinx()  # Secondo asse y condividendo l'asse x
-    line2 = ax2.plot(index, df_congestion_fee["congestion_fee"], label="Fee/Congestion ratio", color='orange', linestyle='dotted')
-    # Secondo asse y
-    ax2.set_ylabel("Fee/Congestion ratio", color='orange')
-    ax2.tick_params(axis='y', labelcolor='orange')
-
-    ax1.set_xticks(index)
-    ax1.set_xticklabels(df_congestion_fee.index.astype(str), rotation=90)
-    fig.tight_layout()
-    # Fino a qui
+    # SCRIPT TYPES CHART
+    #_____________________________________________________________________________________________________________________
 
     script_used = df_outputs.merge(df_transactions, on="tx_id", how="left")[["timestamp", "scripttype"]]
     script_used["timestamp"] = pd.to_datetime(script_used["timestamp"], unit="s")
     script_used["month"] = script_used["timestamp"].dt.to_period("M")
     script_counts = script_used.groupby(["month", "scripttype"]).size().unstack().fillna(0) 
 
-    num_scripts = len(script_counts.columns)
-    fig, axes = plt.subplots(nrows=num_scripts, ncols=1, figsize=(10, 2 * num_scripts), sharex=True)
-    index = np.arange(len(script_counts.index))
-    bar_width = 0.35
+    plot_script_counts(script_counts)
 
-    # for each script type plot the count per month in a different subplot
-    for i, col in enumerate(script_counts.columns): 
-        axes[i].bar(index, script_counts[col], bar_width, label=f"Script {col}")
-        axes[i].set_title(f"Script {col} per month")
-        axes[i].set_ylabel("Count")
-        axes[i].set_yscale("log")
-        axes[i].legend()
+    # SCRAPING 
+    #_____________________________________________________________________________________________________________________
 
-    # set the x-axis labels only on the last subplot to avoid overlapping
-    axes[-1].set_xticks(index)
-    axes[-1].set_xticklabels(script_counts.index.astype(str), rotation=90)
-    axes[-1].set_xlabel("Month")
-    fig.tight_layout()
+    proxies = []  
+    ua = UserAgent() 
+    generate_proxies(proxies, ua)
+    base_url = "https://www.walletexplorer.com/"
+    output_dir = "indirizzi_wallet_explorer"
+    mining_pools = ["DeepBit.net", "Eligius.st", "BTCGuild.com", "BitMinter.com"]
 
-    plt.show()
+    if not check_csv_files(output_dir, mining_pools):
+        scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir)
+    else:
+        print("I file csv con gli indirizzi delle mining pool sono già presenti e non vuoti")   
 
+    mining_pools_addresses = {}
+    for pool in mining_pools:
+        with open(f"{output_dir}/{pool}.csv", "r") as f:
+            mining_pools_addresses[pool] = f.read().splitlines()
 
-# Si richiede quindi di:
-# ● reperire, mediante scraping, tutti gli indirizzi associati alle 4 mining pool considerate (DeepBit, 
-# Eligius, BTC Guild, BitMinter) ed utilizzare gli indirizzi scaricati per deanonimizzare gli indirizzi utilizzati 
-# nelle Coinbase presenti nel DataSet. 
-
-#TODO fare controllo per file csv già esistenti e non vuoti, e non leggere di nuovo i dati da internet se presenti
-
+    # DEANONIMIZATION 
+    #_____________________________________________________________________________________________________________________
+    
 
 
 
