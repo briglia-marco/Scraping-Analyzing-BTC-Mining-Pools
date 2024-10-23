@@ -6,12 +6,11 @@ import time
 import selenium as sl
 import os
 import matplotlib.pyplot as plt
+import random
+from fake_useragent import UserAgent
+from urllib.request import Request, urlopen
 from utils.data import *
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+#from utils.scraping import *
 
 if __name__ == "__main__":
 
@@ -116,18 +115,65 @@ if __name__ == "__main__":
 
 
 # Si richiede quindi di:
-# ● reperire, mediante scraping, tutti gli indirizzi associati alle 4 mining pool considerate ed
-# utilizzare gli indirizzi scaricati per deanonimizzare gli indirizzi utilizzati nelle Coinbase presenti
-# nel DataSet. Per quanto riguarda le Coinbase che presentano indirizzi non appartenenti a
+# ● reperire, mediante scraping, tutti gli indirizzi associati alle 4 mining pool considerate (DeepBit, 
+# Eligius, BTC Guild, BitMinter) ed utilizzare gli indirizzi scaricati per deanonimizzare gli indirizzi utilizzati 
+# nelle Coinbase presenti nel DataSet. 
+
+#TODO fare controllo per file csv già esistenti e non vuoti, e non leggere di nuovo i dati da internet se presenti
+
+
+
+
+
+
+
+
+# Per quanto riguarda le Coinbase che presentano indirizzi non appartenenti a
 # nessuna delle 4 mining pool, provare a deanonimizzare tramite WalletExplorer i 4 miners che
 # hanno prodotto più transazioni Coinbase (riferiti come top 4 miners), e raggruppare tutti gli
 # altri in una categoria “Others”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ● analizzare le Coinbase deanonimizzate e produrre le seguenti statistiche:
-# ○ numero di blocchi minati da ciascuna delle 4 mining pool, sia globalmente, che
-# mostrando l’andamento temporale dei blocchi minati, per intervalli temporali di due
-# mesi (ed eventualmente quelli dei top 4 miners) ;
-# ○ distribuzione delle reward totali ricevute da ogni mining pool, sia globalmente che
-# mostrandone l'andamento temporale, sempre per intervalli di due mesi;
+#       ○ numero di blocchi minati da ciascuna delle 4 mining pool, sia globalmente, che
+#         mostrando l’andamento temporale dei blocchi minati, per intervalli temporali di due
+#         mesi (ed eventualmente quelli dei top 4 miners) ;
+#       ○ distribuzione delle reward totali ricevute da ogni mining pool, sia globalmente che
+#         mostrandone l'andamento temporale, sempre per intervalli di due mesi;
+
 # ● considerare infine la Coinbase di Eligius mostrata in Fig.4. Questa transazione può essere
 # reperita semplicemente digitando il suo hash nell’explorer. Come si può vedere in figura è
 # possibile individuare la transazione successiva che spende i bitcoin di questa Coinbase
