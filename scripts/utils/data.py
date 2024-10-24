@@ -1,4 +1,3 @@
-# data.py
 import pandas as pd
 
 
@@ -28,3 +27,14 @@ def import_dataset(files_path, dataframes, names):
         print(f"Reading {path}")
         dataframes.append(pd.read_csv(path, names=name, dtype=dt))
     return
+
+def calculate_blocks_mined(entities, group_by_column, tx_data):
+    blocks_mined = pd.DataFrame()
+    for entity in entities:
+        blocks_mined[entity] = tx_data[tx_data[group_by_column] == entity].groupby("period").size()
+
+    total_blocks_by_period = blocks_mined.sum(axis=1)
+    total_blocks_mined = [blocks_mined[entity].sum() for entity in entities]
+    df_total_blocks_mined = pd.DataFrame({"Entity": entities, "total_blocks_mined": total_blocks_mined})
+    
+    return total_blocks_by_period, total_blocks_mined, df_total_blocks_mined
