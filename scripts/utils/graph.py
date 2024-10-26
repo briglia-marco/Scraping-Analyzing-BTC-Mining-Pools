@@ -45,3 +45,40 @@ def plot_congestion_fee(df_congestion_fee):
     fig.tight_layout()
     # Fino a qui
     plt.show()
+
+
+def plot_blocks_mined(total_by_period, groups, values_by_group):
+    width = 0.2
+    index = np.arange(len(total_by_period))
+    fig, ax = plt.subplots(figsize=(10, 7)) 
+    for i, group in enumerate(groups):
+        group_values = values_by_group[group]
+        ax.bar(index + i * width, group_values, width, label=group)
+
+    ax.set_xticks(index + width * (len(groups) - 1) / 2)
+    ax.set_xticklabels(total_by_period.index, rotation=90)
+    ax.set_xlabel("Time Period")
+    ax.set_ylabel("Values")
+    ax.set_title("Values by Group Over Time")
+    ax.legend()
+
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_total_values(df_total_by_period, total_values_group1, total_values_group2):
+    width = 0.2
+    fig, ax = plt.subplots(figsize=(10, 7))
+    index = np.arange(len(df_total_by_period))
+    for i, col in enumerate(df_total_by_period.columns):
+        ax.bar(index + i * width, df_total_by_period[col], width, label=col)
+
+    ax.set_xticks(index + width * (len(df_total_by_period.columns) - 1) / 2)
+    ax.set_xticklabels(df_total_by_period.index, rotation=90)
+    ax.set_xlabel("Time Period")
+    ax.set_ylabel("Values")
+    ax.set_title(f"Total Values by Group 1 ({total_values_group1}) and Group 2 ({total_values_group2})")
+    ax.legend()
+
+    fig.tight_layout()
+    plt.show()

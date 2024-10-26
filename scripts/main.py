@@ -129,49 +129,28 @@ if __name__ == "__main__":
 
     #print(top_4_miners)
 
-    # BLOCKS MINED BY MINING POOLS AND TOP 4 MINERS 
+    # BLOCKS MINED BY MINING POOLS AND TOP 4 MINERS (GLOBALLY AND PERIODICALLY)
     # _____________________________________________________________________________________________________________________
 
-    # ● analizzare le Coinbase deanonimizzate e produrre le seguenti statistiche:
-    #       ○ numero di blocchi minati da ciascuna delle 4 mining pool, sia globalmente, che
-    #         mostrando l’andamento temporale dei blocchi minati, per intervalli temporali di due
-    #         mesi (ed eventualmente quelli dei top 4 miners);
-
     tx_coinbase["timestamp"] = pd.to_datetime(tx_coinbase["timestamp"], unit="s")
-    tx_coinbase["period"] = tx_coinbase["timestamp"].dt.to_period(freq="2M")
 
-    total_blocks_by_period_pool, total_blocks_mined_by_pool, df_total_blocks_mined_pool = calculate_blocks_mined(mining_pools, "mining_pool", tx_coinbase)
-    total_blocks_by_period_miners, total_blocks_mined_by_miners, df_total_blocks_mined_miners = calculate_blocks_mined(top_4_miners.index, "hash", tx_coinbase)
+    total_blocks_by_period_pool, blocks_mined_by_pool, df_total_blocks_mined_pool = calculate_blocks_mined(mining_pools, "mining_pool", tx_coinbase)
+
+    total_blocks_by_period_miners, blocks_mined_by_miners, df_total_blocks_mined_miners = calculate_blocks_mined(top_4_miners.index, "hash", tx_coinbase)
     df_total_blocks_mined_miners["Entity"] = df_total_blocks_mined_miners["Entity"].map(top_4_miners["wallet_id"])
+    blocks_mined_by_miners.columns = blocks_mined_by_miners.columns.map(top_4_miners["wallet_id"])
 
-    #TODO plottare i blocchi minati per period, sia per mining pools che per top 4 miners con total_blocks_by_period_...
-    #TODO plottare i blocchi minati globali per mining pools e top 4 miners
+    plot_blocks_mined(total_blocks_by_period_pool, mining_pools, blocks_mined_by_pool)
 
+    plot_blocks_mined(total_blocks_by_period_miners, top_4_miners["wallet_id"], blocks_mined_by_miners)
 
-
-
-
-
-
-
-
-
-
-
-    # for pool in mining_pools:
-    #     blocks_mined_mining_pools[pool] = tx_coinbase[tx_coinbase["mining_pool"] == pool].groupby("block_id").size().sum() 
-
-    # for miner in top_4_miners.index:
-    #     blocks_mined_miners[miner] = tx_coinbase[tx_coinbase["hash"] == miner].groupby("block_id").size().sum()
-
+    df_total_blocks_by_period_both = pd.concat([total_blocks_by_period_pool, total_blocks_by_period_miners], axis=1)
+    df_total_blocks_by_period_both.columns = ["Mining Pools", "Top 4 Miners"]
     
+    total_blocks_pool = total_blocks_by_period_pool.sum().sum()
+    total_blocks_miners = total_blocks_by_period_miners.sum().sum()
 
-    # print(blocks_mined_miners)
-    # print(blocks_mined_mining_pools)
-
-
-
-
+    plot_total_values(df_total_blocks_by_period_both, total_blocks_pool, total_blocks_miners)
 
 
 
