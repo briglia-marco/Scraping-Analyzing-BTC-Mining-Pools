@@ -80,12 +80,13 @@ if __name__ == "__main__":
 
     proxies = []  
     ua = UserAgent() 
-    generate_proxies(proxies, ua)
+    #generate_proxies(proxies, ua)
     base_url = "https://www.walletexplorer.com/"
     output_dir = "indirizzi_wallet_explorer"
     mining_pools = ["DeepBit.net", "Eligius.st", "BTCGuild.com", "BitMinter.com"]
 
     if not check_csv_files(output_dir, mining_pools):
+        generate_proxies(proxies, ua)
         scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir)
     else:
         print("I file csv con gli indirizzi delle mining pool sono già presenti e non vuoti")   
@@ -103,77 +104,75 @@ if __name__ == "__main__":
     tx_coinbase = df_transactions[df_transactions["isCoinbase"] == 1].drop("isCoinbase", axis=1)
     tx_coinbase = tx_coinbase.merge(df_outputs, on="tx_id")
     tx_coinbase = tx_coinbase.merge(df_mapping, on="addressId")
-    tx_coinbase = tx_coinbase.drop(["script_size", "scripttype", "addressId"], axis=1) # Elimino colonne inutili !!!!!! FORSE NE SERVE ELIMINARE ALTRE 
+    tx_coinbase = tx_coinbase.drop(["script_size", "scripttype", "addressId", "fee", "position", "tx_id"], axis=1) 
     tx_coinbase["mining_pool"] = tx_coinbase["hash"].map(mining_pools_addresses).fillna("Others")
 
     # DEANONIMIZATION OF TOP 4 MINERS
     #_____________________________________________________________________________________________________________________
 
     #testing purposes
-    wallet_id = [
-        "[012fa1bdf6]",
-        "EclipseMC.com-old",
-        "[019a46b8d8]",
-        "[01a990df75]"
-    ]
-    # wallet_id = []
+    wallet_id = {
+        "1811f7UUQAkAejj11dU5cVtKUSTfoSVzdm": "[012fa1bdf6]", 
+        "1Baf75Ferj6A7AoN565gCQj9kGWbDMHfN9": "EclipseMC.com-old", 
+        "1KUCp7YP5FP8ViRxhfszSUJCTAajK6viGy": "[019a46b8d8]", 
+        "151z2eoe2D9f6cohGNNU96GsKAqLfYP8mN": "[01a990df75]"
+    }
+    #wallet_id = {}
 
     other_miners = tx_coinbase[tx_coinbase["mining_pool"] == "Others"]
     other_miners_count = other_miners["hash"].value_counts().reset_index() 
     other_miners_count.columns = ["hash", "transaction_count"] 
     top_4_miners = other_miners_count[:4].copy() 
     if len(wallet_id) != 4:
+        generate_proxies(proxies, ua)
         found_miners(top_4_miners, base_url, wallet_id)
-    top_4_miners["wallet_id"] = wallet_id
-    top_4_miners.set_index("hash", inplace=True)
+    top_4_miners["wallet_id"] = top_4_miners["hash"].map(wallet_id)
 
     #print(top_4_miners)
 
     # BLOCKS MINED BY MINING POOLS AND TOP 4 MINERS (GLOBALLY AND PERIODICALLY)
     # _____________________________________________________________________________________________________________________
 
-    tx_coinbase["timestamp"] = pd.to_datetime(tx_coinbase["timestamp"], unit="s")
+    df_column_bimonthly_period(tx_coinbase)
+    filtered_tx_coinbase_pools = tx_coinbase[tx_coinbase["mining_pool"] != "Others"]
+    filtered_tx_coinbase_miners = tx_coinbase[tx_coinbase["hash"].isin(top_4_miners["hash"])]
 
-    total_blocks_by_period_pool, blocks_mined_by_pool, df_total_blocks_mined_pool = calculate_blocks_mined(mining_pools, "mining_pool", tx_coinbase)
+    blocks_pools, total_blocks_pool = calculate_blocks_mined(filtered_tx_coinbase_pools, "bimonthly_period", "mining_pool")
+    blocks_miners, total_blocks_miners = calculate_blocks_mined(filtered_tx_coinbase_miners, "bimonthly_period", "hash")
+    # Renaming for better readability
+    blocks_miners.columns = blocks_miners.columns.map(wallet_id)  
+    total_blocks_miners.index = total_blocks_miners.index.map(wallet_id) 
 
-    total_blocks_by_period_miners, blocks_mined_by_miners, df_total_blocks_mined_miners = calculate_blocks_mined(top_4_miners.index, "hash", tx_coinbase)
-    df_total_blocks_mined_miners["Entity"] = df_total_blocks_mined_miners["Entity"].map(top_4_miners["wallet_id"])
-    blocks_mined_by_miners.columns = blocks_mined_by_miners.columns.map(top_4_miners["wallet_id"])
+    #plot_blocks_mined(blocks_pools, total_blocks_pool)
+    #plot_blocks_mined(blocks_miners, total_blocks_miners)
 
-    plot_blocks_mined(total_blocks_by_period_pool, mining_pools, blocks_mined_by_pool)
+    # REWARDS OBTAINED BY MINING POOLS AND TOP 4 MINERS (GLOBALLY AND PERIODICALLY)
+    # _____________________________________________________________________________________________________________________
 
-    plot_blocks_mined(total_blocks_by_period_miners, top_4_miners["wallet_id"], blocks_mined_by_miners)
+    rewards_pools, total_rewards_pool = calculate_rewards(filtered_tx_coinbase_pools, "bimonthly_period", "mining_pool")
+    rewards_miners, total_rewards_miners = calculate_rewards(filtered_tx_coinbase_miners, "bimonthly_period", "hash")
+    # Renaming for better readability
+    rewards_miners.columns = rewards_miners.columns.map(wallet_id)  
+    total_rewards_miners.index = total_rewards_miners.index.map(wallet_id) 
 
-    df_total_blocks_by_period_both = pd.concat([total_blocks_by_period_pool, total_blocks_by_period_miners], axis=1)
-    df_total_blocks_by_period_both.columns = ["Mining Pools", "Top 4 Miners"]
+    #plot_rewards(rewards_pools, total_rewards_pool)
+    #plot_rewards(rewards_miners, total_rewards_miners)
+
+    # ELIGIUS TAINT ANALYSIS 
+    # _____________________________________________________________________________________________________________________
+
+
+
+    # ● considerare infine la Coinbase di Eligius mostrata in Fig.4. Questa transazione può essere
+    # reperita semplicemente digitando il suo hash nell’explorer. Come si può vedere in figura è
+    # possibile individuare la transazione successiva che spende i bitcoin di questa Coinbase
+    # seguendo la freccia in basso a destra in figura. Ripetendo il procedimento ricorsivamente più
+    # volte è possibile “seguire il flusso” dei bitcoin (una tecnica utilizzata in una tecnica di analisi
+    # chiamata taint analysis). Si chiede di tracciare il percorso dei bitcoin creati e di creare,
+    # mediante NetworkX, un grafo che descriva tale percorso. Si considerino al massimo k passi di
+    # tale percorso.
+
     
-    total_blocks_pool = total_blocks_by_period_pool.sum().sum()
-    total_blocks_miners = total_blocks_by_period_miners.sum().sum()
-
-    plot_total_values(df_total_blocks_by_period_both, total_blocks_pool, total_blocks_miners)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#  ○ distribuzione delle reward totali ricevute da ogni mining pool, sia globalmente che
-#    mostrandone l'andamento temporale, sempre per intervalli di due mesi;
 
 
 
@@ -196,25 +195,6 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-# ● considerare infine la Coinbase di Eligius mostrata in Fig.4. Questa transazione può essere
-# reperita semplicemente digitando il suo hash nell’explorer. Come si può vedere in figura è
-# possibile individuare la transazione successiva che spende i bitcoin di questa Coinbase
-# seguendo la freccia in basso a destra in figura. Ripetendo il procedimento ricorsivamente più
-# volte è possibile “seguire il flusso” dei bitcoin (una tecnica utilizzata in una tecnica di analisi
-# chiamata taint analysis). Si chiede di tracciare il percorso dei bitcoin creati e di creare,
-# mediante NetworkX, un grafo che descriva tale percorso. Si considerino al massimo k passi di
-# tale percorso.
 
 
 

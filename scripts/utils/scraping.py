@@ -150,7 +150,7 @@ def found_miners(top_4_miners, base_url, wallet_id):
         search_box.send_keys(Keys.RETURN)
         try:
             wallet = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div h2"))).text.split(" ")[1]
-            wallet_id.append(wallet)
+            wallet_id[hash_value] = wallet
         except Exception as e:
             print(f"Errore nel recuperare il wallet ID per {hash_value}: {e}")
     driver.quit()

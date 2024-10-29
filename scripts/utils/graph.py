@@ -46,39 +46,50 @@ def plot_congestion_fee(df_congestion_fee):
     # Fino a qui
     plt.show()
 
-
-def plot_blocks_mined(total_by_period, groups, values_by_group):
+# Plot the blocks mined per period and the total blocks mined per entity
+## blocks_entity, total_blocks_entity: DataFrames with the blocks mined per period, Total blocks mined per entity
+def plot_blocks_mined(blocks_entity, total_blocks_entity):
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(15, 5))
     width = 0.2
-    index = np.arange(len(total_by_period))
-    fig, ax = plt.subplots(figsize=(10, 7)) 
-    for i, group in enumerate(groups):
-        group_values = values_by_group[group]
-        ax.bar(index + i * width, group_values, width, label=group)
+    index1 = np.arange(len(blocks_entity))
+    for i, col in enumerate(blocks_entity.columns):
+        ax1.bar(index1 + i * width, blocks_entity[col], width, label=col)
+    ax1.set_title("Blocks Mined per Period")
+    ax1.set_ylabel("Number of Blocks Mined")
+    ax1.legend()
+    ax1.set_xticks(index1 + width * (len(blocks_entity.columns) - 1) / 2)
+    ax1.set_xticklabels(blocks_entity.index, rotation=90)
+    ax1.set_xlabel("Period")
 
-    ax.set_xticks(index + width * (len(groups) - 1) / 2)
-    ax.set_xticklabels(total_by_period.index, rotation=90)
-    ax.set_xlabel("Time Period")
-    ax.set_ylabel("Values")
-    ax.set_title("Values by Group Over Time")
-    ax.legend()
+    ax2.bar(total_blocks_entity.index, total_blocks_entity.values)
+    ax2.set_title("Total Blocks Mined")
+    ax2.set_ylabel("Number of Blocks Mined")
+    ax2.set_xlabel("Entity")
+    
+    fig.tight_layout()
+    plt.show()
 
+# Plot the rewards per period and the total rewards per entity
+## rewards_entity, total_rewards_entity: DataFrames with the rewards per period, Total rewards per entity
+def plot_rewards(rewards_entity, total_rewards_entity):
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(15, 5))
+    width = 0.2
+    index1 = np.arange(len(rewards_entity))
+    for i, col in enumerate(rewards_entity.columns):
+        ax1.bar(index1 + i * width, rewards_entity[col], width, label=col)
+    ax1.set_title("Rewards per Period")
+    ax1.set_ylabel("Amount of Rewards")
+    ax1.legend()
+    ax1.set_xticks(index1 + width * (len(rewards_entity.columns) - 1) / 2)
+    ax1.set_xticklabels(rewards_entity.index, rotation=90)
+    ax1.set_xlabel("Period")
+
+    ax2.bar(total_rewards_entity.index, total_rewards_entity.values)
+    ax2.set_title("Total Rewards")
+    ax2.set_ylabel("Amount of Rewards")
+    ax2.set_xlabel("Entity")
+    
     fig.tight_layout()
     plt.show()
 
 
-def plot_total_values(df_total_by_period, total_values_group1, total_values_group2):
-    width = 0.2
-    fig, ax = plt.subplots(figsize=(10, 7))
-    index = np.arange(len(df_total_by_period))
-    for i, col in enumerate(df_total_by_period.columns):
-        ax.bar(index + i * width, df_total_by_period[col], width, label=col)
-
-    ax.set_xticks(index + width * (len(df_total_by_period.columns) - 1) / 2)
-    ax.set_xticklabels(df_total_by_period.index, rotation=90)
-    ax.set_xlabel("Time Period")
-    ax.set_ylabel("Values")
-    ax.set_title(f"Total Values by Group 1 ({total_values_group1}) and Group 2 ({total_values_group2})")
-    ax.legend()
-
-    fig.tight_layout()
-    plt.show()
