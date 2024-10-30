@@ -12,7 +12,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
 # Generate Proxies from sslproxies.org and store them in a list 
 ## proxies, ua : List containing the proxies, UserAgent object
 def generate_proxies(proxies, ua):
@@ -46,7 +45,7 @@ def get_page_with_proxy(url, proxies, ua):
             time.sleep(2) # 2 seconds for not overloading the server
             return response
         except requests.exceptions.RequestException as e:
-            print(f"Errore durante la richiesta: {e}. Rimuovo proxy {proxy['ip']}:{proxy['port']}")
+            print(f"Errore during request: {e}. Removing proxy {proxy['ip']}:{proxy['port']}")
             proxies.remove(proxy)
             time.sleep(2)
 
@@ -74,9 +73,9 @@ def get_address_page_link(mining_pools_addresses, base_url, proxies, ua):
             if wallet_address:
                 mining_pools_addresses[pool_name][0] = wallet_address["href"]
             else:
-                print(f"Non è stato trovato il link 'show wallet addresses' per la mining pool {pool_name}")
+                print(f"Link not found 'show wallet addresses' for the mining pool {pool_name}")
         else:
-            print(f"Nessun link trovato per la mining pool {pool_name}")
+            print(f"Link not found for mining pool {pool_name}")
 
 # Extract the addresses of the mining pools in separate lists 
 ## single_mining_pool_addresses, mining_pools_addresses, base_url, proxies, ua : Dictionary with the mining pools and their addresses, URL of the page, List containing the proxies, UserAgent object
@@ -84,12 +83,12 @@ def extract_mining_pool_addresses(single_mining_pool_addresses, mining_pools_add
     for pool_name, link in mining_pools_addresses.items():
         url = base_url + link[0]
         while url:
-            print("Richiesta a", url)
+            print("Request at", url)
             response = get_page_with_proxy(url, proxies, ua)
             soup = BeautifulSoup(response.text, "html.parser")
             addresses = soup.select('td a')
             if not addresses:
-                print(f"Nessun indirizzo trovato per {pool_name} alla URL: {url}")
+                print(f"Address not found {pool_name} at URL: {url}")
             for address in addresses:
                 single_mining_pool_addresses[pool_name].append(address.text)
             url = check_next_page(soup)
@@ -113,21 +112,30 @@ def get_mining_pool_page_link(mining_pools, mining_pools_addresses, base_url, pr
 ## mining_pools, proxies, ua, base_url, output_dir : List with the mining pools, List containing the proxies, UserAgent object, URL of the page, Output directory
 def scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir):
     mining_pools_addresses = {pool: [] for pool in mining_pools}
-
     get_mining_pool_page_link(mining_pools, mining_pools_addresses, base_url, proxies, ua)
     get_address_page_link(mining_pools_addresses, base_url, proxies, ua)
+
     single_mining_pool_addresses = {pool: [] for pool in mining_pools} 
     extract_mining_pool_addresses(single_mining_pool_addresses, mining_pools_addresses, base_url, proxies, ua)
-
     os.makedirs(output_dir, exist_ok=True) 
     for pool_name, addresses in single_mining_pool_addresses.items():
-        with open(f"{output_dir}/{pool_name}.csv", "w") as f:
-            for address in addresses:
-                f.write(f"{address}\n")
+        if addresses:  # Controlla se ci sono indirizzi da scrivere
+            file_path = os.path.join(output_dir, f"{pool_name}.csv")
+            try:
+                with open(file_path, "w") as f:
+                    for address in addresses:
+                        f.write(f"{address}\n")
+                print(f"Saved {len(addresses)} addresses for {pool_name} in {file_path}")
+            except IOError as e:
+                print(f"Error during writing of {file_path}: {e}")
+        else:
+            print(f"Address not found for {pool_name}. File not created.")
  
 # Check if the csv files with the mining pool addresses are already present and not empty
 ## output_dir, mining_pools : Output directory, List with the mining pools
 def check_csv_files(output_dir, mining_pools):
+    if not os.path.exists(output_dir):
+        return False
     for pool in mining_pools:
         if not os.path.exists(f"{output_dir}/{pool}.csv"): 
             return False
@@ -152,7 +160,73 @@ def found_miners(top_4_miners, base_url, wallet_id):
             wallet = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div h2"))).text.split(" ")[1]
             wallet_id[hash_value] = wallet
         except Exception as e:
-            print(f"Errore nel recuperare il wallet ID per {hash_value}: {e}")
+            print(f"Error: wallet ID not found {hash_value}: {e}")
     driver.quit()
 
+# Get the transactions of a specific transaction ID and the hash of the input and output
+## txid: Transaction ID
+# def get_hash_and_transaction(txid, base_url):
+#     response = requests.get(base_url + txid)
+#     soup = BeautifulSoup(response.text, "html.parser")
+#     output_txids = []
+#     input_hash = []
+#     output_hash = []
+#     trs = soup.select("table.tx > tr > td > table.empty > tr")
+#     if trs:
+#         get_hash(trs[0], input_hash)
+#         get_hash(trs[1], output_hash)
+#         get_output_txids(trs[1], output_txids)
+#     print(input_hash)
+#     print("\n")
+#     print(output_hash)
+#     print("\n")
+#     print(output_txids)
 
+    #return output_txids, input_hash, output_hash
+
+def get_hash_and_transaction(txid, base_url, proxies, ua):
+    response = get_page_with_proxy(base_url + txid, proxies, ua)
+    soup = BeautifulSoup(response.text, "html.parser")
+    output_txids = []
+    input_hash = []
+    output_hash = []
+    
+    # Seleziona le tabelle degli input e degli output
+    input_table = soup.select_one("table.tx > tr > td:nth-of-type(1) > table.empty")
+    output_table = soup.select_one("table.tx > tr > td:nth-of-type(2) > table.empty")
+
+    if input_table and output_table:
+        # Ottieni tutte le righe di input e output
+        input_trs = input_table.select("tr")
+        output_trs = output_table.select("tr")
+
+        get_hash(input_trs, input_hash)
+        get_hash(output_trs, output_hash)
+        get_output_txids(output_trs, output_txids)
+    else:
+        print("Impossibile trovare le tabelle degli input o degli output.")
+    return output_txids, input_hash, output_hash
+
+
+def get_hash(trs, list_hash):
+    for tr in trs:
+        hash = tr.select_one("td a")
+        if hash:
+            list_hash.append(hash.text.strip())
+        else:
+            list_hash.append("Coinbase")
+
+def get_output_txids(trs, output_txids):
+    for tr in trs:
+        hash = tr.select_one("td.small a")
+        if hash:
+            output_txids.append(hash["href"])
+    
+
+
+in_tx = "c82c10925cc3890f1299407fa5da5d99cb6298fc43449b73c5cfdc75f28024f6"
+tx = "126b8fd8200800c5ec2e2148bf9fecd80f73c46076c5c6577e1f63cf039670b6"
+tx2 = "9bbc9c39f8e34084e9666d2a9cc3f0e8a62a8fadbf2c102ec52cd2a130145d89"
+tx3 = "abf059c90e70803c8f0d35f49a3b22e4791a04256764ed46d8558b89bc80846b"
+
+# get_hash_and_transaction(tx3, "https://www.walletexplorer.com/txid/")

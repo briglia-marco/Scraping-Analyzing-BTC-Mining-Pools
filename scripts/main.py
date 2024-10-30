@@ -1,14 +1,6 @@
 import pandas as pd
-from bs4 import BeautifulSoup
-import numpy as np
-import requests
-import time
-import selenium as sl
 import os
-import matplotlib.pyplot as plt
-import random
 from fake_useragent import UserAgent
-from urllib.request import Request, urlopen
 from utils.data import *
 from utils.scraping import *
 from utils.graph import *
@@ -16,7 +8,13 @@ from utils.graph import *
 if __name__ == "__main__":
 
     data_path = "data/raw/"
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"Directory '{data_path}' not found.")
+    
     files = os.listdir(data_path)
+    if not files:
+        raise FileNotFoundError(f"No file found in '{data_path}'.")
+    
     files_path = [data_path + f for f in files if f != ".DS_Store"]
     names = [
         ["hash", "addressId"],
@@ -25,8 +23,14 @@ if __name__ == "__main__":
         ["timestamp", "block_id", "tx_id", "isCoinbase", "fee"],
     ]
     dataframes = []
+
     import_dataset(files_path, dataframes, names)
-    print("Data imported successfully")
+    if len(dataframes) != len(files_path):
+        print("Not all dataframes have been imported.")
+    elif any(df.empty for df in dataframes):
+        print("At least one of the dataframes is empty.")
+    else:
+        print("Data imported successfully")
 
     df_mapping = dataframes[0]
     df_inputs = dataframes[1]
@@ -73,6 +77,9 @@ if __name__ == "__main__":
     script_used["month"] = script_used["timestamp"].dt.to_period("M")
     script_counts = script_used.groupby(["month", "scripttype"]).size().unstack().fillna(0) 
 
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ## MODIFICARE QUESTO GRAFICO PIETOSO
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     #plot_script_counts(script_counts)
 
     # SCRAPING 
@@ -80,23 +87,27 @@ if __name__ == "__main__":
 
     proxies = []  
     ua = UserAgent() 
-    #generate_proxies(proxies, ua)
     base_url = "https://www.walletexplorer.com/"
     output_dir = "indirizzi_wallet_explorer"
     mining_pools = ["DeepBit.net", "Eligius.st", "BTCGuild.com", "BitMinter.com"]
+    generate_proxies(proxies, ua)
+
 
     if not check_csv_files(output_dir, mining_pools):
-        generate_proxies(proxies, ua)
         scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir)
     else:
-        print("I file csv con gli indirizzi delle mining pool sono già presenti e non vuoti")   
+        print("CSV files already exist and are not empty.")   
 
     mining_pools_addresses = {}
     for pool in mining_pools:
-        with open(f"{output_dir}/{pool}.csv", "r") as f:
-            addresses = f.read().splitlines() 
-            for address in addresses:
-                mining_pools_addresses[address] = pool
+        file_path = os.path.join(output_dir, f"{pool}.csv")
+        try:
+            with open(file_path, "r") as f:
+                addresses = f.read().splitlines() 
+                for address in addresses:
+                    mining_pools_addresses[address] = pool
+        except IOError as e:
+            print(f"Error reading file {file_path}: {e}")
 
     # DEANONIMIZATION 
     #_____________________________________________________________________________________________________________________
@@ -124,7 +135,6 @@ if __name__ == "__main__":
     other_miners_count.columns = ["hash", "transaction_count"] 
     top_4_miners = other_miners_count[:4].copy() 
     if len(wallet_id) != 4:
-        generate_proxies(proxies, ua)
         found_miners(top_4_miners, base_url, wallet_id)
     top_4_miners["wallet_id"] = top_4_miners["hash"].map(wallet_id)
 
@@ -139,8 +149,8 @@ if __name__ == "__main__":
 
     blocks_pools, total_blocks_pool = calculate_blocks_mined(filtered_tx_coinbase_pools, "bimonthly_period", "mining_pool")
     blocks_miners, total_blocks_miners = calculate_blocks_mined(filtered_tx_coinbase_miners, "bimonthly_period", "hash")
-    # Renaming for better readability
-    blocks_miners.columns = blocks_miners.columns.map(wallet_id)  
+
+    blocks_miners.columns = blocks_miners.columns.map(wallet_id) 
     total_blocks_miners.index = total_blocks_miners.index.map(wallet_id) 
 
     #plot_blocks_mined(blocks_pools, total_blocks_pool)
@@ -151,7 +161,7 @@ if __name__ == "__main__":
 
     rewards_pools, total_rewards_pool = calculate_rewards(filtered_tx_coinbase_pools, "bimonthly_period", "mining_pool")
     rewards_miners, total_rewards_miners = calculate_rewards(filtered_tx_coinbase_miners, "bimonthly_period", "hash")
-    # Renaming for better readability
+
     rewards_miners.columns = rewards_miners.columns.map(wallet_id)  
     total_rewards_miners.index = total_rewards_miners.index.map(wallet_id) 
 
@@ -161,18 +171,17 @@ if __name__ == "__main__":
     # ELIGIUS TAINT ANALYSIS 
     # _____________________________________________________________________________________________________________________
 
+    base_url = "https://www.walletexplorer.com"
+    first_tx = "/txid/c82c10925cc3890f1299407fa5da5d99cb6298fc43449b73c5cfdc75f28024f6"
+    k = 3
+    G = nx.DiGraph()
+
+    # FARE IN MODO DI ABBELLIRE IL GRAFO PERCHè AL MOMENTO è BRUTTO E VEDERE SE SI PUò MIGLIORARE QUALCOSA
+    build_transaction_graph(G, first_tx, k, base_url, proxies, ua)
+    visualize_graph(G)
 
 
-    # ● considerare infine la Coinbase di Eligius mostrata in Fig.4. Questa transazione può essere
-    # reperita semplicemente digitando il suo hash nell’explorer. Come si può vedere in figura è
-    # possibile individuare la transazione successiva che spende i bitcoin di questa Coinbase
-    # seguendo la freccia in basso a destra in figura. Ripetendo il procedimento ricorsivamente più
-    # volte è possibile “seguire il flusso” dei bitcoin (una tecnica utilizzata in una tecnica di analisi
-    # chiamata taint analysis). Si chiede di tracciare il percorso dei bitcoin creati e di creare,
-    # mediante NetworkX, un grafo che descriva tale percorso. Si considerino al massimo k passi di
-    # tale percorso.
 
-    
 
 
 

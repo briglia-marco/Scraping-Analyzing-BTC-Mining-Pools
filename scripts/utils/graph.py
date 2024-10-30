@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
+from utils.scraping import *
 
 # Plot the script counts per month for each script type in a separate subplot in a log scale
 ## script_counts: DataFrame with the script counts per month for each script type
@@ -93,3 +95,59 @@ def plot_rewards(rewards_entity, total_rewards_entity):
     plt.show()
 
 
+def build_transaction_graph(G, start_txid, max_depth, base_url, proxies, ua):
+    to_visit = [(start_txid, 0)]
+    visited = set()
+
+    while to_visit:
+        current_txid, depth = to_visit.pop(0)
+        if current_txid in visited or depth > max_depth:
+            continue
+        visited.add(current_txid)
+        # Ottieni le transazioni di output, l'hash dell'input e l'hash dell'output
+        try:
+            output_txids, input_hash, output_hash = get_hash_and_transaction(current_txid, base_url, proxies, ua)
+        except Exception as e:
+            print(f"Errore durante lo scraping di {current_txid}: {e}")
+            continue
+
+        # Aggiungi attributi al nodo corrente
+        G.add_node(current_txid, inputs=input_hash, outputs=output_hash)
+
+        for out_txid in output_txids:
+            # Aggiungi il nodo destinazione se non esiste
+            if not G.has_node(out_txid):
+                G.add_node(out_txid)
+            # Aggiungi l'arco con il numero di transazione come etichetta
+            G.add_edge(current_txid, out_txid, transaction_number=current_txid)
+            to_visit.append((out_txid, depth + 1))
+    return G
+
+
+def visualize_graph(G):
+    plt.figure(figsize=(12, 8))
+    pos = nx.spring_layout(G, k=0.5, iterations=50)
+
+    # Disegna i nodi
+    nx.draw_networkx_nodes(G, pos, node_size=500, node_color='lightblue')
+
+    # Prepara le etichette dei nodi con inputs e outputs
+    node_labels = {}
+    for node in G.nodes(data=True):
+        inputs = ', '.join(node[1].get('inputs', []))
+        outputs = ', '.join(node[1].get('outputs', []))
+        label = f"TXID: {node[0]}\nInputs: {inputs}\nOutputs: {outputs}"
+        node_labels[node[0]] = label
+
+    # Disegna le etichette dei nodi
+    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8)
+
+    # Disegna gli archi
+    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20)
+
+    # Prepara le etichette degli archi con il numero di transazione
+    edge_labels = nx.get_edge_attributes(G, 'transaction_number')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+
+    plt.axis('off')
+    plt.show()
