@@ -176,7 +176,6 @@ if __name__ == "__main__":
     k = 3
     G = nx.DiGraph()
 
-    # FARE IN MODO DI ABBELLIRE IL GRAFO PERCHè AL MOMENTO è BRUTTO E VEDERE SE SI PUò MIGLIORARE QUALCOSA
     build_transaction_graph(G, first_tx, k, base_url, proxies, ua)
     visualize_graph(G)
 

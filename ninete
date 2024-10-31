@@ -1,0 +1,78 @@
+
+# def build_transaction_graph(G, start_txid, max_depth, base_url, proxies, ua):
+#     to_visit = [(start_txid, 0)]
+#     visited = set()
+
+#     while to_visit:
+#         current_txid, depth = to_visit.pop(0)
+#         if current_txid in visited or depth > max_depth:
+#             continue
+#         visited.add(current_txid)
+#         # Ottieni le transazioni di output, l'hash dell'input e l'hash dell'output
+#         try:
+#             output_txids, input_hash, output_hash = get_hash_and_transaction(current_txid, base_url, proxies, ua)
+#         except Exception as e:
+#             print(f"Errore durante lo scraping di {current_txid}: {e}")
+#             continue
+
+#         # Aggiungi attributi al nodo corrente
+#         G.add_node(current_txid, inputs=input_hash, outputs=output_hash)
+
+#         for out_txid in output_txids:
+#             # Aggiungi il nodo destinazione se non esiste
+#             if not G.has_node(out_txid):
+#                 G.add_node(out_txid)
+#             # Aggiungi l'arco con il numero di transazione come etichetta
+#             G.add_edge(current_txid, out_txid, transaction_number=current_txid)
+#             to_visit.append((out_txid, depth + 1))
+#     return G
+
+
+# def visualize_graph(G):
+#     plt.figure(figsize=(10, 7))
+#     pos = nx.shell_layout(G)
+
+#     # Identificare i nodi che sono sia input che output
+#     next_input_nodes = set(edge[1] for edge in G.edges(data=True))
+#     node_colors = ["yellow" if node in next_input_nodes else "lightblue" for node in G.nodes()]
+
+#     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=600, edgecolors="black", linewidths=0.8)
+
+#     # Creazione delle etichette dei nodi con output precedente come input e tutti gli output
+#     node_labels = {}
+#     for node_id, node_data in G.nodes(data=True):
+#         # Lista per salvare solo gli output specifici che sono stati utilizzati come input
+#         relevant_previous_outputs = []
+        
+#         # Trova tutti gli output che sono stati utilizzati come input in questo nodo
+#         for u, v, edge_data in G.in_edges(node_id, data=True):
+#             # Verifica se l'arco ha un attributo 'transaction_number' per identificare la transazione
+#             transaction_outputs = G.nodes[u].get('outputs', [])
+#             transaction_inputs = edge_data.get('inputs', [])
+#             relevant_outputs = [out[:6] for out in transaction_outputs if out in transaction_inputs]
+#             relevant_previous_outputs.extend(relevant_outputs)
+
+#         # Unisci i valori trovati per la label di input
+#         previous_output_label = ', '.join(relevant_previous_outputs)
+        
+#         # Elenca tutti gli output abbreviati del nodo corrente
+#         outputs = ', '.join([out[:6] for out in node_data.get('outputs', [])])
+        
+#         # Crea l'etichetta con l'output precedente specifico come input e tutti gli output
+#         label = f"In: {previous_output_label}\nOut: {outputs}"
+#         node_labels[node_id] = label
+
+#     # Disegna le etichette dei nodi
+#     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=6, font_color="black")
+
+#     # Disegna gli archi con frecce e colore grigio
+#     nx.draw_networkx_edges(G, pos, arrowstyle='-|>', arrowsize=12, edge_color="gray", alpha=0.7)
+
+#     # Etichette degli archi con il numero di transazione, mostrando solo i caratteri dal 6 al 16
+#     edge_labels = {edge: transaction_number[6:16] for edge, transaction_number in nx.get_edge_attributes(G, 'transaction_number').items()}
+#     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=6, label_pos=0.5, font_color="gray")
+
+#     plt.axis('off')
+#     plt.title("Transaction Graph")
+#     plt.tight_layout()
+#     plt.show()

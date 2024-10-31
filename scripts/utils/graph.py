@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import scipy as sp
 from utils.scraping import *
 
 # Plot the script counts per month for each script type in a separate subplot in a log scale
@@ -94,60 +95,56 @@ def plot_rewards(rewards_entity, total_rewards_entity):
     fig.tight_layout()
     plt.show()
 
-
-def build_transaction_graph(G, start_txid, max_depth, base_url, proxies, ua):
-    to_visit = [(start_txid, 0)]
-    visited = set()
-
+def build_transaction_graph(G, first_tx, k, base_url, proxies, ua):
+    to_visit = [(first_tx, 0)] 
+    visited = set() 
     while to_visit:
-        current_txid, depth = to_visit.pop(0)
-        if current_txid in visited or depth > max_depth:
+        current_txid, depth = to_visit.pop(0) 
+        if depth > k or current_txid in visited:
             continue
         visited.add(current_txid)
-        # Ottieni le transazioni di output, l'hash dell'input e l'hash dell'output
         try:
             output_txids, input_hash, output_hash = get_hash_and_transaction(current_txid, base_url, proxies, ua)
         except Exception as e:
             print(f"Errore durante lo scraping di {current_txid}: {e}")
             continue
-
-        # Aggiungi attributi al nodo corrente
         G.add_node(current_txid, inputs=input_hash, outputs=output_hash)
-
-        for out_txid in output_txids:
-            # Aggiungi il nodo destinazione se non esiste
+        for i, out_txid in enumerate(output_txids):
+            if i < len(output_hash):
+                used_output = output_hash[i]
+            else:
+                used_output = "Unknown" 
             if not G.has_node(out_txid):
-                G.add_node(out_txid)
-            # Aggiungi l'arco con il numero di transazione come etichetta
-            G.add_edge(current_txid, out_txid, transaction_number=current_txid)
+                out_txids_new, input_hash_new, output_hash_new = get_hash_and_transaction(out_txid, base_url, proxies, ua)
+                G.add_node(out_txid, inputs=input_hash_new, outputs=output_hash_new)
+            G.add_edge(current_txid, out_txid, output_used=used_output)
             to_visit.append((out_txid, depth + 1))
-    return G
+    return G   
 
 
 def visualize_graph(G):
     plt.figure(figsize=(12, 8))
-    pos = nx.spring_layout(G, k=0.5, iterations=50)
-
-    # Disegna i nodi
-    nx.draw_networkx_nodes(G, pos, node_size=500, node_color='lightblue')
-
-    # Prepara le etichette dei nodi con inputs e outputs
+    pos = nx.shell_layout(G)
+    
+    next_input_nodes = set(edge[1] for edge in G.edges(data=True))
+    node_colors = ["yellow" if node in next_input_nodes else "lightblue" for node in G.nodes()]
+    
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=600, edgecolors="black", linewidths=1)
+    
     node_labels = {}
-    for node in G.nodes(data=True):
-        inputs = ', '.join(node[1].get('inputs', []))
-        outputs = ', '.join(node[1].get('outputs', []))
-        label = f"TXID: {node[0]}\nInputs: {inputs}\nOutputs: {outputs}"
-        node_labels[node[0]] = label
+    for node_id, node_data in G.nodes(data=True):
+        inputs = ', '.join([input[:6] for input in node_data.get('inputs', [])])
+        outputs = ', '.join([output[:6] for output in node_data.get('outputs', [])])
+        label = f"In: {inputs}\nOut: {outputs}"
+        node_labels[node_id] = label
+    
+    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8, font_color="black")
 
-    # Disegna le etichette dei nodi
-    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8)
-
-    # Disegna gli archi
-    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20)
-
-    # Prepara le etichette degli archi con il numero di transazione
-    edge_labels = nx.get_edge_attributes(G, 'transaction_number')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+    edge_labels = {edge: f"Out: {output_used[:6]}" for edge, output_used in nx.get_edge_attributes(G, 'output_used').items()}
+    nx.draw_networkx_edges(G, pos, arrowstyle='-|>', arrowsize=12, edge_color="gray", alpha=0.6)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7, label_pos=0.5, font_color="gray")
 
     plt.axis('off')
+    plt.title("Transaction Graph")
+    plt.tight_layout()
     plt.show()
