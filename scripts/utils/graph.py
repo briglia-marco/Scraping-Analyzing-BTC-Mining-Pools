@@ -106,18 +106,20 @@ def build_transaction_graph(G, first_tx, k, base_url, proxies, ua):
         try:
             output_txids, input_hash, output_hash = get_hash_and_transaction(current_txid, base_url, proxies, ua)
         except Exception as e:
-            print(f"Errore durante lo scraping di {current_txid}: {e}")
+            print(f"Error during scraping of {current_txid}: {e}")
             continue
         G.add_node(current_txid, inputs=input_hash, outputs=output_hash)
+        
         for i, out_txid in enumerate(output_txids):
             if i < len(output_hash):
                 used_output = output_hash[i]
             else:
                 used_output = "Unknown" 
+
             if not G.has_node(out_txid):
                 out_txids_new, input_hash_new, output_hash_new = get_hash_and_transaction(out_txid, base_url, proxies, ua)
                 G.add_node(out_txid, inputs=input_hash_new, outputs=output_hash_new)
-            G.add_edge(current_txid, out_txid, output_used=used_output)
+            G.add_edge(current_txid, out_txid, output_used=used_output, transaction_id=out_txid)
             to_visit.append((out_txid, depth + 1))
     return G   
 
@@ -128,16 +130,18 @@ def visualize_graph(G):
     pos = nx.shell_layout(G)
     next_input_nodes = set(edge[1] for edge in G.edges(data=True))
     node_colors = ["yellow" if node in next_input_nodes else "lightblue" for node in G.nodes()]
+
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=600, edgecolors="black", linewidths=1)
-    node_labels = {}
-    for node_id, node_data in G.nodes(data=True):
-        inputs = ', '.join([input[:6] for input in node_data.get('inputs', [])])
-        outputs = ', '.join([output[:6] for output in node_data.get('outputs', [])])
-        label = f"In: {inputs}\nOut: {outputs}"
-        node_labels[node_id] = label
-    
+    node_labels = {
+        node_id: f"In: {', '.join([input[:6] for input in node_data.get('inputs', [])])}\nOut: {', '.join([output[:6] for output in node_data.get('outputs', [])])}"
+        for node_id, node_data in G.nodes(data=True)
+    }
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8, font_color="black")
-    edge_labels = {edge: f"Out: {output_used[:6]}" for edge, output_used in nx.get_edge_attributes(G, 'output_used').items()}
+
+    edge_labels = {
+        (source, target): f"TX: {data['transaction_id'][6:12]} | Out: {data['output_used'][:6]}"
+        for source, target, data in G.edges(data=True)
+    }
     nx.draw_networkx_edges(G, pos, arrowstyle='-|>', arrowsize=12, edge_color="gray", alpha=0.6)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7, label_pos=0.5, font_color="gray")
 
@@ -145,4 +149,3 @@ def visualize_graph(G):
     plt.title("Transaction Graph")
     plt.tight_layout()
     plt.show()
-    

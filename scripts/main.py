@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     base_url = "https://www.walletexplorer.com"
     first_tx = "/txid/c82c10925cc3890f1299407fa5da5d99cb6298fc43449b73c5cfdc75f28024f6"
-    k = 2
+    k = 3
     G = nx.DiGraph()
 
     build_transaction_graph(G, first_tx, k, base_url, proxies, ua)
