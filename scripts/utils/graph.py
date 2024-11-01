@@ -4,49 +4,47 @@ import numpy as np
 import scipy as sp
 from utils.scraping import *
 
-# Plot the script counts per month for each script type in a separate subplot in a log scale
+# Plot the script counts per month for each script type
 ## script_counts: DataFrame with the script counts per month for each script type
 def plot_script_counts(script_counts):
-    num_scripts = len(script_counts.columns)
-    fig, axes = plt.subplots(nrows=num_scripts, ncols=1, figsize=(10, 2 * num_scripts), sharex=True)
-    index = np.arange(len(script_counts.index))
-    bar_width = 0.35
+    script_counts.index = script_counts.index.to_timestamp()
+    plt.figure(figsize=(10, 7)) 
+    
+    for scripttype in script_counts.columns:
+        plt.plot(script_counts.index, script_counts[scripttype], label=f"Scripttype {scripttype}", 
+                 marker='o', linestyle='-', linewidth=1)
 
-    for i, col in enumerate(script_counts.columns): 
-        axes[i].bar(index, script_counts[col], bar_width, label=f"Script {col}")
-        axes[i].set_title(f"Script {col} per month")
-        axes[i].set_ylabel("Count")
-        axes[i].set_yscale("log") # log scale
-        axes[i].legend()
+    plt.xlabel("Month", fontsize=12)
+    plt.ylabel("Script Counts", fontsize=12)
+    plt.title("Monthly Distribution of Transactions by Scripttype", fontsize=14)
+    plt.xticks(rotation=90)
+    plt.grid(True, linestyle='--', alpha=0.6) 
 
-    axes[-1].set_xticks(index)
-    axes[-1].set_xticklabels(script_counts.index.astype(str), rotation=90)
-    axes[-1].set_xlabel("Month")
-    fig.tight_layout()
+    plt.legend(title="Type of Script", fontsize=10)
+    plt.tight_layout() 
     plt.show()
 
 # Plot congestion and fee/congestion ratio per month
 ## df_congestion_fee: DataFrame with the congestion and fee sum per month
 def plot_congestion_fee(df_congestion_fee):
-    # Si può sostituire da qui con il codice della relazione per vedere giornalmente la congestione e il fee/congestion ratio
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-    index = np.arange(len(df_congestion_fee.index.astype(str)))
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+    index = np.arange(len(df_congestion_fee.index))
 
-    ax1.plot(index, df_congestion_fee["congestion"], label="Congestion", color='blue', linestyle='dashed')
-    ax1.set_title("Fee/Congestion ratio per month")
-    ax1.set_xlabel("Month")
-    ax1.set_ylabel("Congestion", color='blue')
+    ax1.plot(index, df_congestion_fee["congestion"], label="Congestion", color='blue', linestyle='dashed', marker='o')
+    ax1.set_title("Fee/Congestion Ratio per Month", fontsize=14)
+    ax1.set_xlabel("Month", fontsize=12)
+    ax1.set_ylabel("Congestion", color='blue', fontsize=12)
     ax1.tick_params(axis='y', labelcolor='blue')
+    ax1.set_xticks(index)
+    ax1.set_xticklabels(df_congestion_fee.index.strftime('%Y-%m'), rotation=90, ha='right')  # Formato mese-anno per chiarezza
 
-    ax2 = ax1.twinx() 
-    ax2.plot(index, df_congestion_fee["congestion_fee"], label="Fee/Congestion ratio", color='orange', linestyle='dotted')
-    ax2.set_ylabel("Fee/Congestion ratio", color='orange')
+    ax2 = ax1.twinx()
+    ax2.plot(index, df_congestion_fee["congestion_fee"], label="Fee/Congestion Ratio", color='orange', linestyle='dotted', marker='s')
+    ax2.set_ylabel("Fee/Congestion Ratio", color='orange', fontsize=12)
     ax2.tick_params(axis='y', labelcolor='orange')
 
-    ax1.set_xticks(index)
-    ax1.set_xticklabels(df_congestion_fee.index.astype(str), rotation=90)
+    fig.legend()
     fig.tight_layout()
-    # Fino a qui
     plt.show()
 
 # Plot the blocks mined per period and the total blocks mined per entity
@@ -95,6 +93,8 @@ def plot_rewards(rewards_entity, total_rewards_entity):
     fig.tight_layout()
     plt.show()
 
+# Build the transaction graph starting from a transaction and visiting its outputs
+## G, first_tx, k, base_url, proxies, ua: Graph, First transaction, Depth, Base URL, Proxies, User-Agent
 def build_transaction_graph(G, first_tx, k, base_url, proxies, ua):
     to_visit = [(first_tx, 0)] 
     visited = set() 
@@ -121,16 +121,14 @@ def build_transaction_graph(G, first_tx, k, base_url, proxies, ua):
             to_visit.append((out_txid, depth + 1))
     return G   
 
-
+# Visualize the transaction graph
+## G: Graph
 def visualize_graph(G):
     plt.figure(figsize=(12, 8))
     pos = nx.shell_layout(G)
-    
     next_input_nodes = set(edge[1] for edge in G.edges(data=True))
     node_colors = ["yellow" if node in next_input_nodes else "lightblue" for node in G.nodes()]
-    
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=600, edgecolors="black", linewidths=1)
-    
     node_labels = {}
     for node_id, node_data in G.nodes(data=True):
         inputs = ', '.join([input[:6] for input in node_data.get('inputs', [])])
@@ -139,7 +137,6 @@ def visualize_graph(G):
         node_labels[node_id] = label
     
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8, font_color="black")
-
     edge_labels = {edge: f"Out: {output_used[:6]}" for edge, output_used in nx.get_edge_attributes(G, 'output_used').items()}
     nx.draw_networkx_edges(G, pos, arrowstyle='-|>', arrowsize=12, edge_color="gray", alpha=0.6)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7, label_pos=0.5, font_color="gray")
@@ -148,3 +145,4 @@ def visualize_graph(G):
     plt.title("Transaction Graph")
     plt.tight_layout()
     plt.show()
+    

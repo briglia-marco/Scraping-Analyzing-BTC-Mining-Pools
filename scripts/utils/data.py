@@ -4,9 +4,6 @@ import pandas as pd
 # read csv files and store them in a list of dataframes
 ## files_path, dataframes, names: List with the paths of the csv files, List with the dataframes, List with the names of the columns
 def import_dataset(files_path, dataframes, names):
-    # Ho analizzato i valori massimi dei vari dataset per determinare i tipi di dati ottimali
-    # che permettono di risparmiare memoria, eseguendo questo lavoro preliminarmente
-    # per evitare di ripeterlo ad ogni esecuzione e allungare inutilmente il tempo di esecuzione.
     dtype = [
         {"hash": "str", "addressId": "int32"},
         {"tx_id": "int32", "prevTxId": "int32", "prevTxpos": "int16"},

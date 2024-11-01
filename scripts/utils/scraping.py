@@ -163,43 +163,20 @@ def found_miners(top_4_miners, base_url, wallet_id):
             print(f"Error: wallet ID not found {hash_value}: {e}")
     driver.quit()
 
-# Get the transactions of a specific transaction ID and the hash of the input and output
-## txid: Transaction ID
-# def get_hash_and_transaction(txid, base_url):
-#     response = requests.get(base_url + txid)
-#     soup = BeautifulSoup(response.text, "html.parser")
-#     output_txids = []
-#     input_hash = []
-#     output_hash = []
-#     trs = soup.select("table.tx > tr > td > table.empty > tr")
-#     if trs:
-#         get_hash(trs[0], input_hash)
-#         get_hash(trs[1], output_hash)
-#         get_output_txids(trs[1], output_txids)
-#     print(input_hash)
-#     print("\n")
-#     print(output_hash)
-#     print("\n")
-#     print(output_txids)
-
-    #return output_txids, input_hash, output_hash
-
+# Get the txid and the hash of the input and output 
+## txid, base_url, proxies, ua : Transaction ID, URL of the page, List containing the proxies, UserAgent object
 def get_hash_and_transaction(txid, base_url, proxies, ua):
     response = get_page_with_proxy(base_url + txid, proxies, ua)
     soup = BeautifulSoup(response.text, "html.parser")
     output_txids = []
     input_hash = []
     output_hash = []
-    
-    # Seleziona le tabelle degli input e degli output
     input_table = soup.select_one("table.tx > tr > td:nth-of-type(1) > table.empty")
     output_table = soup.select_one("table.tx > tr > td:nth-of-type(2) > table.empty")
 
     if input_table and output_table:
-        # Ottieni tutte le righe di input e output
         input_trs = input_table.select("tr")
         output_trs = output_table.select("tr")
-
         get_hash(input_trs, input_hash)
         get_hash(output_trs, output_hash)
         get_output_txids(output_trs, output_txids)
@@ -207,7 +184,8 @@ def get_hash_and_transaction(txid, base_url, proxies, ua):
         print("Impossibile trovare le tabelle degli input o degli output.")
     return output_txids, input_hash, output_hash
 
-
+# Get the hash of the input and output
+## trs, list_hash : List of tr elements, List of hashes
 def get_hash(trs, list_hash):
     for tr in trs:
         hash = tr.select_one("td a")
@@ -216,17 +194,10 @@ def get_hash(trs, list_hash):
         else:
             list_hash.append("Coinbase")
 
+# Get the output txids
+## trs, output_txids : List of tr elements, List of output txids
 def get_output_txids(trs, output_txids):
     for tr in trs:
         hash = tr.select_one("td.small a")
         if hash:
             output_txids.append(hash["href"])
-    
-
-
-in_tx = "c82c10925cc3890f1299407fa5da5d99cb6298fc43449b73c5cfdc75f28024f6"
-tx = "126b8fd8200800c5ec2e2148bf9fecd80f73c46076c5c6577e1f63cf039670b6"
-tx2 = "9bbc9c39f8e34084e9666d2a9cc3f0e8a62a8fadbf2c102ec52cd2a130145d89"
-tx3 = "abf059c90e70803c8f0d35f49a3b22e4791a04256764ed46d8558b89bc80846b"
-
-# get_hash_and_transaction(tx3, "https://www.walletexplorer.com/txid/")

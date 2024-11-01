@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     tx_no_coinbase["size"] = size_input * tx_no_coinbase["n_inputs"] + size_output * tx_no_coinbase["n_outputs"] + tx_no_coinbase["script_total_size"]
     tx_no_coinbase["timestamp"] = pd.to_datetime(tx_no_coinbase["timestamp"], unit="s")
-    tx_no_coinbase["month"] = tx_no_coinbase["timestamp"].dt.to_period("M") # "D" per giorno, "M" per mese
+    tx_no_coinbase["month"] = tx_no_coinbase["timestamp"].dt.to_period("M")
 
     df_congestion_fee = tx_no_coinbase.groupby("month").agg({
         "size": "sum",
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     }).rename(columns={"size": "congestion", "fee": "fee_sum"})
     df_congestion_fee["congestion_fee"] = df_congestion_fee["fee_sum"] / df_congestion_fee["congestion"] 
 
-    #plot_congestion_fee(df_congestion_fee)
+    plot_congestion_fee(df_congestion_fee)
 
     # SCRIPT TYPES CHART
     #_____________________________________________________________________________________________________________________
@@ -77,10 +77,7 @@ if __name__ == "__main__":
     script_used["month"] = script_used["timestamp"].dt.to_period("M")
     script_counts = script_used.groupby(["month", "scripttype"]).size().unstack().fillna(0) 
 
-    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ## MODIFICARE QUESTO GRAFICO PIETOSO
-    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    #plot_script_counts(script_counts)
+    plot_script_counts(script_counts)
 
     # SCRAPING 
     #_____________________________________________________________________________________________________________________
@@ -91,7 +88,6 @@ if __name__ == "__main__":
     output_dir = "indirizzi_wallet_explorer"
     mining_pools = ["DeepBit.net", "Eligius.st", "BTCGuild.com", "BitMinter.com"]
     generate_proxies(proxies, ua)
-
 
     if not check_csv_files(output_dir, mining_pools):
         scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir)
@@ -122,13 +118,13 @@ if __name__ == "__main__":
     #_____________________________________________________________________________________________________________________
 
     #testing purposes
-    wallet_id = {
-        "1811f7UUQAkAejj11dU5cVtKUSTfoSVzdm": "[012fa1bdf6]", 
-        "1Baf75Ferj6A7AoN565gCQj9kGWbDMHfN9": "EclipseMC.com-old", 
-        "1KUCp7YP5FP8ViRxhfszSUJCTAajK6viGy": "[019a46b8d8]", 
-        "151z2eoe2D9f6cohGNNU96GsKAqLfYP8mN": "[01a990df75]"
-    }
-    #wallet_id = {}
+    # wallet_id = {
+    #     "1811f7UUQAkAejj11dU5cVtKUSTfoSVzdm": "[012fa1bdf6]", 
+    #     "1Baf75Ferj6A7AoN565gCQj9kGWbDMHfN9": "EclipseMC.com-old", 
+    #     "1KUCp7YP5FP8ViRxhfszSUJCTAajK6viGy": "[019a46b8d8]", 
+    #     "151z2eoe2D9f6cohGNNU96GsKAqLfYP8mN": "[01a990df75]"
+    # }
+    wallet_id = {}
 
     other_miners = tx_coinbase[tx_coinbase["mining_pool"] == "Others"]
     other_miners_count = other_miners["hash"].value_counts().reset_index() 
@@ -137,8 +133,6 @@ if __name__ == "__main__":
     if len(wallet_id) != 4:
         found_miners(top_4_miners, base_url, wallet_id)
     top_4_miners["wallet_id"] = top_4_miners["hash"].map(wallet_id)
-
-    #print(top_4_miners)
 
     # BLOCKS MINED BY MINING POOLS AND TOP 4 MINERS (GLOBALLY AND PERIODICALLY)
     # _____________________________________________________________________________________________________________________
@@ -153,8 +147,8 @@ if __name__ == "__main__":
     blocks_miners.columns = blocks_miners.columns.map(wallet_id) 
     total_blocks_miners.index = total_blocks_miners.index.map(wallet_id) 
 
-    #plot_blocks_mined(blocks_pools, total_blocks_pool)
-    #plot_blocks_mined(blocks_miners, total_blocks_miners)
+    plot_blocks_mined(blocks_pools, total_blocks_pool)
+    plot_blocks_mined(blocks_miners, total_blocks_miners)
 
     # REWARDS OBTAINED BY MINING POOLS AND TOP 4 MINERS (GLOBALLY AND PERIODICALLY)
     # _____________________________________________________________________________________________________________________
@@ -165,45 +159,16 @@ if __name__ == "__main__":
     rewards_miners.columns = rewards_miners.columns.map(wallet_id)  
     total_rewards_miners.index = total_rewards_miners.index.map(wallet_id) 
 
-    #plot_rewards(rewards_pools, total_rewards_pool)
-    #plot_rewards(rewards_miners, total_rewards_miners)
+    plot_rewards(rewards_pools, total_rewards_pool)
+    plot_rewards(rewards_miners, total_rewards_miners)
 
     # ELIGIUS TAINT ANALYSIS 
     # _____________________________________________________________________________________________________________________
 
     base_url = "https://www.walletexplorer.com"
     first_tx = "/txid/c82c10925cc3890f1299407fa5da5d99cb6298fc43449b73c5cfdc75f28024f6"
-    k = 3
+    k = 2
     G = nx.DiGraph()
 
     build_transaction_graph(G, first_tx, k, base_url, proxies, ua)
     visualize_graph(G)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

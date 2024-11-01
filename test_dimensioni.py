@@ -1,16 +1,5 @@
-import pandas as pd
-from bs4 import BeautifulSoup
-import numpy as np
-import requests
-import time
-import selenium as sl
 import os
-from scripts.utils.data import *
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from scripts.utils.data import import_dataset
 
 # ● transactions.csv, che contiene una riga per ogni transazione del DataSet, con i campi:
 # timestamp: timestamp del blocco che contiene la transazione.  Corrisponde al tempo
