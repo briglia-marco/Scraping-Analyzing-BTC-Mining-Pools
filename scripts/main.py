@@ -85,7 +85,7 @@ if __name__ == "__main__":
     proxies = []  
     ua = UserAgent() 
     base_url = "https://www.walletexplorer.com/"
-    output_dir = "indirizzi_wallet_explorer"
+    output_dir = "data/processed/indirizzi_wallet_explorer"
     mining_pools = ["DeepBit.net", "Eligius.st", "BTCGuild.com", "BitMinter.com"]
     generate_proxies(proxies, ua)
 
