@@ -119,7 +119,7 @@ def scrape_wallet_explorer(mining_pools, proxies, ua, base_url, output_dir):
     extract_mining_pool_addresses(single_mining_pool_addresses, mining_pools_addresses, base_url, proxies, ua)
     os.makedirs(output_dir, exist_ok=True) 
     for pool_name, addresses in single_mining_pool_addresses.items():
-        if addresses:  # Controlla se ci sono indirizzi da scrivere
+        if addresses: 
             file_path = os.path.join(output_dir, f"{pool_name}.csv")
             try:
                 with open(file_path, "w") as f:
@@ -152,7 +152,7 @@ def found_miners(top_4_miners, base_url, wallet_id):
     wait = WebDriverWait(driver, 10)
     for hash_value in top_4_miners["hash"]:
         driver.get(base_url)
-        search_box = wait.until(EC.presence_of_element_located((By.NAME, "q")))  # Attende fino a quando l'elemento è presente
+        search_box = wait.until(EC.presence_of_element_located((By.NAME, "q"))) 
         search_box.clear() 
         search_box.send_keys(hash_value) 
         search_box.send_keys(Keys.RETURN)

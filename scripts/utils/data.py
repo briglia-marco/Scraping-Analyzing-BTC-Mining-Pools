@@ -32,7 +32,7 @@ def import_dataset(files_path, dataframes, names):
 def df_column_bimonthly_period(df):
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
     df["bimonthly_period"] = df["timestamp"].dt.to_period("M")
-    df["bimonthly_period"] = (df["bimonthly_period"].dt.year * 12 + df["bimonthly_period"].dt.month - 1) // 2  # Raggruppa ogni due mesi
+    df["bimonthly_period"] = (df["bimonthly_period"].dt.year * 12 + df["bimonthly_period"].dt.month - 1) // 2
     period_to_date = {
        period: (datetime.date(year=(period // 6), month=(period % 6) * 2 + 1, day=1)).strftime("%Y-%m-%d")
        for period in df["bimonthly_period"].unique()

@@ -36,7 +36,7 @@ def plot_congestion_fee(df_congestion_fee):
     ax1.set_ylabel("Congestion", color='blue', fontsize=12)
     ax1.tick_params(axis='y', labelcolor='blue')
     ax1.set_xticks(index)
-    ax1.set_xticklabels(df_congestion_fee.index.strftime('%Y-%m'), rotation=90, ha='right')  # Formato mese-anno per chiarezza
+    ax1.set_xticklabels(df_congestion_fee.index.strftime('%Y-%m'), rotation=90, ha='right')
 
     ax2 = ax1.twinx()
     ax2.plot(index, df_congestion_fee["congestion_fee"], label="Fee/Congestion Ratio", color='orange', linestyle='dotted', marker='s')
