@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import scipy as sp
 from utils.scraping import *
 
 # Plot the script counts per month for each script type
