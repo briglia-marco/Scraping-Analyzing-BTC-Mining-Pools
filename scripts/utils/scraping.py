@@ -144,7 +144,7 @@ def check_csv_files(output_dir, mining_pools):
     return True
 
 # Scrape WalletExplorer to get the addresses of the mining pools
-## top_4_miners, base_url, wallet_id : DataFrame with the top 4 miners, URL of the page, List with the wallet IDs
+## top_4_miners, base_url, wallet_id : DataFrame with the top 4 miners, URL of the page, Dictionary with the wallet IDs
 def found_miners(top_4_miners, base_url, wallet_id):
     options = Options()
     options.add_argument('--headless=new')

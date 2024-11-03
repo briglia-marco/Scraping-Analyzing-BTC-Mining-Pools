@@ -50,7 +50,6 @@ from scripts.utils.data import import_dataset
 # quell’output nel DataSet.
 
 data_path = "data/raw/"
-# funzione che legge i nomi dei file dalla cartella che gli passo e li mette in una lista di stringhe
 files = os.listdir("data/raw")
 files_path = [data_path + f for f in files if f != ".DS_Store"]
 dataframes = []
