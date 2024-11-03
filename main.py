@@ -1,9 +1,9 @@
 import pandas as pd
 import os
 from fake_useragent import UserAgent
-from utils.data import *
-from utils.scraping import *
-from utils.graph import *
+from scripts.utils.data import *
+from scripts.utils.scraping import *
+from scripts.utils.graph import *
 
 if __name__ == "__main__":
 
