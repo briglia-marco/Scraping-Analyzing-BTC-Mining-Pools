@@ -111,7 +111,7 @@ def build_transaction_graph(G, first_tx, k, base_url, proxies, ua):
         
         for i, out_txid in enumerate(output_txids):
             if i < len(output_hash):
-                used_output = output_hash[i]
+                used_output = output_hash[i] # since output_hash is mapped 1:1 with output_txids, we can use the same index
             else:
                 used_output = "Unknown" 
 

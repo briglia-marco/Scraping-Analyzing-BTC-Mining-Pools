@@ -18,7 +18,7 @@ def generate_proxies(proxies, ua):
     proxies.clear() 
     proxies_req = Request('https://www.sslproxies.org/')
     proxies_req.add_header('User-Agent', ua.random)
-    proxies_doc = urlopen(proxies_req).read().decode('utf8')
+    proxies_doc = urlopen(proxies_req).read().decode('utf8') #urlopen needs to be decoded utf8 to be read
     soup = BeautifulSoup(proxies_doc, 'html.parser')
     proxies_table = soup.find('table', class_='table table-striped table-bordered')
 
